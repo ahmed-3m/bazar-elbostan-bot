@@ -29,7 +29,8 @@ export interface EventDeps {
 }
 
 export function eventId(event: MessagingEvent, text: string): string {
-  return event.message?.mid ?? `${event.sender.id}:${event.timestamp ?? ""}:${text}`;
+  return event.message?.mid ??
+    `${event.sender.id}:${event.timestamp ?? ""}:${text}`;
 }
 
 export async function handleEvent(event: MessagingEvent, deps: EventDeps) {
@@ -41,6 +42,7 @@ export async function handleEvent(event: MessagingEvent, deps: EventDeps) {
   const claimed = await deps.claimMid(mid);
   if (!claimed) return;
 
+  let messageSent = false;
   try {
     await deps.upsertCustomer(psid);
     await deps.saveMessage(psid, "in", text);
@@ -51,15 +53,20 @@ export async function handleEvent(event: MessagingEvent, deps: EventDeps) {
     ]);
     const reply = await deps.generateReply(history, text, storeContext);
 
-    // Logged before the send so the generated reply is still visible when
-    // delivery fails — e.g. a synthetic PSID used for local testing, or a real
-    // customer the app can't message yet while it's in development mode.
-    console.log(`reply to ${psid}:`, reply);
+    // Logged before the send so delivery status is visible when it fails — e.g.
+    // a synthetic PSID used for local testing, or a real customer the app can't
+    // message yet while it's in development mode.
+    console.log(`sending reply (length=${reply.length})`);
 
     await deps.sendTextMessage(psid, reply);
+    messageSent = true;
     await deps.saveMessage(psid, "out", reply);
   } catch (err) {
-    await deps.releaseMid(mid);
+    // Only release the mid if we failed before sending — otherwise retrying the
+    // webhook would cause a duplicate message to be sent.
+    if (!messageSent) {
+      await deps.releaseMid(mid);
+    }
     throw err;
   }
 }

@@ -1,5 +1,9 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { handleEvent, type EventDeps, type MessagingEvent } from "./handle_event.ts";
+import {
+  type EventDeps,
+  handleEvent,
+  type MessagingEvent,
+} from "./handle_event.ts";
 
 function event(mid: string, text: string): MessagingEvent {
   return { sender: { id: "psid-1" }, timestamp: 1, message: { mid, text } };
@@ -64,7 +68,10 @@ Deno.test("echoes and empty messages never generate a reply", async () => {
   const sent: string[] = [];
   const deps = makeDeps(new Set(), sent);
 
-  await handleEvent({ sender: { id: "x" }, message: { text: "hi", is_echo: true } }, deps);
+  await handleEvent({
+    sender: { id: "x" },
+    message: { text: "hi", is_echo: true },
+  }, deps);
   await handleEvent({ sender: { id: "x" }, message: {} }, deps);
 
   assertEquals(sent, []);

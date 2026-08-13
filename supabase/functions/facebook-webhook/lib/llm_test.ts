@@ -46,6 +46,7 @@ Deno.test("still includes the inbound text when history is empty", () => {
 });
 
 Deno.test("disables GLM thinking so the reply is a single fast completion", async () => {
+  const originalApiKey = Deno.env.get("glm_api_key");
   Deno.env.set("glm_api_key", "test-key");
   const originalFetch = globalThis.fetch;
   let body: { thinking?: { type: string } } | undefined;
@@ -66,6 +67,10 @@ Deno.test("disables GLM thinking so the reply is a single fast completion", asyn
     assertEquals(body?.thinking, { type: "disabled" });
   } finally {
     globalThis.fetch = originalFetch;
-    Deno.env.delete("glm_api_key");
+    if (originalApiKey !== undefined) {
+      Deno.env.set("glm_api_key", originalApiKey);
+    } else {
+      Deno.env.delete("glm_api_key");
+    }
   }
 });

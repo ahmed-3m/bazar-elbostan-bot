@@ -21,8 +21,8 @@ export function buildChatMessages(
 ): ChatMessage[] {
   const usable = history.filter((h) => h.content !== FALLBACK_REPLY);
   const last = usable[usable.length - 1];
-  const alreadyIncluded =
-    last?.direction === "in" && last.content === incomingMessage;
+  const alreadyIncluded = last?.direction === "in" &&
+    last.content === incomingMessage;
 
   return [
     {
@@ -39,10 +39,14 @@ export function buildChatMessages(
         `act like it's the first time).\n\n${storeContext}`,
     },
     ...usable.map((h) => ({
-      role: (h.direction === "in" ? "user" : "assistant") as "user" | "assistant",
+      role: (h.direction === "in" ? "user" : "assistant") as
+        | "user"
+        | "assistant",
       content: h.content,
     })),
-    ...(alreadyIncluded ? [] : [{ role: "user" as const, content: incomingMessage }]),
+    ...(alreadyIncluded
+      ? []
+      : [{ role: "user" as const, content: incomingMessage }]),
   ];
 }
 
@@ -60,10 +64,10 @@ export async function generateReply(
 
   const messages = buildChatMessages(history, incomingMessage, storeContext);
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), GLM_TIMEOUT_MS);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GLM_TIMEOUT_MS);
 
+  try {
     const res = await fetch(
       // Coding-Plan key (sk-sp-...) — bills against the subscription quota, but
       // ONLY works on the /api/coding/ path, not the standard PAYG path.
@@ -86,8 +90,6 @@ export async function generateReply(
       },
     );
 
-    clearTimeout(timeoutId);
-
     if (!res.ok) {
       console.error("GLM call failed:", res.status, await res.text());
       return FALLBACK_REPLY;
@@ -101,5 +103,7 @@ export async function generateReply(
   } catch (error) {
     console.error("GLM request error:", error);
     return FALLBACK_REPLY;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

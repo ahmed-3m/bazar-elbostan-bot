@@ -53,7 +53,13 @@ export async function claimMid(mid: string): Promise<boolean> {
 
 export async function releaseMid(mid: string): Promise<void> {
   const supabase = getServiceClient();
-  await supabase.from("processed_messages").delete().eq("mid", mid);
+  const { error } = await supabase.from("processed_messages").delete().eq(
+    "mid",
+    mid,
+  );
+  if (error) {
+    console.error(`releaseMid failed for mid=${mid}:`, error);
+  }
 }
 
 export async function getStoreContext(): Promise<string> {
