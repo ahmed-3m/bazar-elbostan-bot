@@ -30,7 +30,7 @@ export async function saveMessage(
   await supabase.from("messages").insert({ psid, direction, content });
 }
 
-export async function getRecentHistory(psid: string, limit = 10) {
+export async function getRecentHistory(psid: string, limit = 30) {
   const supabase = getServiceClient();
   const { data } = await supabase
     .from("messages")
