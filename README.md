@@ -81,7 +81,10 @@ supabase/
    `pages_messaging` permission for App Review once it's working, to let
    the general public message the Page.
 
-See [`SPEC.md`](SPEC.md) for the full build log and current status.
+See [`SPEC.md`](SPEC.md) for the full build log and current status, and
+[`TESTING.md`](TESTING.md) for the production testing checklist —
+webhook correctness, conversation memory, multi-language handling,
+failure/retry behavior, security, cost, and Meta App Review readiness.
 
 ## Environment variables
 
