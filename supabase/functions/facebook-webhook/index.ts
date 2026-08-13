@@ -1,6 +1,11 @@
 import { sendTextMessage } from "./lib/graph.ts";
 import { generateReply } from "./lib/llm.ts";
-import { getRecentHistory, saveMessage, upsertCustomer } from "./lib/db.ts";
+import {
+  getRecentHistory,
+  getStoreContext,
+  saveMessage,
+  upsertCustomer,
+} from "./lib/db.ts";
 
 // Meta's webhook verification handshake — GET /facebook-webhook with
 // hub.mode=subscribe. Echo hub.challenge back only if hub.verify_token
@@ -41,8 +46,11 @@ async function handleEvent(event: MessagingEvent) {
   await upsertCustomer(psid);
   await saveMessage(psid, "in", text);
 
-  const history = await getRecentHistory(psid);
-  const reply = await generateReply(history, text);
+  const [history, storeContext] = await Promise.all([
+    getRecentHistory(psid),
+    getStoreContext(),
+  ]);
+  const reply = await generateReply(history, text, storeContext);
 
   await sendTextMessage(psid, reply);
   await saveMessage(psid, "out", reply);

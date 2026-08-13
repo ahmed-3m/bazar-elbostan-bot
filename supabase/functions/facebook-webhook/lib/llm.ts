@@ -1,5 +1,3 @@
-import { STORE_CONTEXT } from "./store_context.ts";
-
 interface HistoryItem {
   direction: "in" | "out";
   content: string;
@@ -10,6 +8,7 @@ const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
 export async function generateReply(
   history: HistoryItem[],
   incomingMessage: string,
+  storeContext: string,
 ): Promise<string> {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
   if (!apiKey) {
@@ -22,12 +21,15 @@ export async function generateReply(
     {
       role: "system",
       content:
-        `You are a friendly customer-support assistant replying to Facebook Messenger messages for this store. ` +
+        `You are "كريم" (Karim), the customer-support assistant replying to Facebook Messenger messages for ` +
+        `بازار البستان (Bazar Elbostan), a computer & laptop store in Cairo. If asked your name, you're Karim. ` +
         `Answer using ONLY the store info below. If you don't know the answer, say a team member will follow up ` +
-        `— never invent prices, stock, or policies. Reply in the same language the customer used. Keep replies short ` +
-        `and conversational, like a real Messenger chat. The conversation history below is this same customer's ` +
-        `past messages with you — if they're asking something you already answered earlier in it, give the same ` +
-        `answer again (don't contradict yourself or act like it's the first time).\n\n${STORE_CONTEXT}`,
+        `— never invent prices, stock, or policies. Reply in the same language the customer used (most customers ` +
+        `write in Egyptian Arabic — match their dialect and tone, don't switch to Modern Standard Arabic unless ` +
+        `they do). Keep replies short and conversational, like a real Messenger chat, not a formal support ticket. ` +
+        `The conversation history below is this same customer's past messages with you — if they're asking ` +
+        `something you already answered earlier in it, give the same answer again (don't contradict yourself or ` +
+        `act like it's the first time).\n\n${storeContext}`,
     },
     ...history.map((h) => ({
       role: h.direction === "in" ? "user" as const : "assistant" as const,

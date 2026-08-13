@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { DEFAULT_STORE_CONTEXT } from "./store_context.ts";
 
 export function getServiceClient() {
   return createClient(
@@ -39,4 +40,19 @@ export async function getRecentHistory(psid: string, limit = 30) {
     .order("created_at", { ascending: false })
     .limit(limit);
   return (data ?? []).reverse();
+}
+
+export async function getStoreContext(): Promise<string> {
+  const supabase = getServiceClient();
+  const { data, error } = await supabase
+    .from("store_config")
+    .select("content")
+    .eq("id", "default")
+    .maybeSingle();
+
+  if (error || !data?.content) {
+    if (error) console.error("getStoreContext failed:", error);
+    return DEFAULT_STORE_CONTEXT;
+  }
+  return data.content;
 }

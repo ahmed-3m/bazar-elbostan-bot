@@ -1,15 +1,10 @@
-// Fill this in with real store info — products, prices, hours, delivery,
-// return policy, location. This gets injected into every LLM call so the
-// bot can answer from it instead of guessing.
-export const STORE_CONTEXT = `
+// Fallback only — real store info (products, prices, hours, contact
+// details, address, etc.) lives in the private `store_config` table, not
+// in source code, so it never has to be committed to this public repo.
+// See lib/db.ts's getStoreContext() and supabase/migrations/0003_store_config.sql.
+export const DEFAULT_STORE_CONTEXT = `
 Store name: بازار البستان (Bazar Elbostan)
 
-TODO: replace this with real info:
-- What does the store sell?
-- Opening hours / days closed
-- Delivery: areas covered, cost, timeframe
-- Payment methods accepted
-- Return / exchange policy
-- Physical address (if any)
-- Common FAQs and their answers
+Store info has not been configured yet. If asked anything, say a team
+member will follow up rather than guessing.
 `.trim();

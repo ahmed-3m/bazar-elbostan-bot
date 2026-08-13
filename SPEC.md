@@ -57,30 +57,41 @@ separate Supabase project, **not** part of the Sihem personal-mentor codebase
   asset assignment is suspected to be the missing piece that the ad-hoc
   consumer OAuth popup alone doesn't create).
 
-## What's already built locally (this directory, uncommitted, not deployed)
+## What's already built locally (this directory)
 ```
 supabase/
   config.toml                              # from `supabase init`
   migrations/0001_init.sql                 # customers + messages tables
+  migrations/0002_enable_rls.sql           # RLS on customers/messages, no policies
+  migrations/0003_store_config.sql         # store_config table (schema only, see below)
   functions/facebook-webhook/
     index.ts                               # GET verify (hub.challenge) + POST event loop
     lib/graph.ts                           # sendTextMessage() → Graph API v21.0 POST /me/messages
-    lib/llm.ts                             # generateReply() → OpenRouter chat completion
-    lib/store_context.ts                   # PLACEHOLDER knowledge base — needs real content (see below)
-    lib/db.ts                              # Supabase client + upsertCustomer/saveMessage/getRecentHistory
+    lib/llm.ts                             # generateReply(history, text, storeContext) → OpenRouter chat completion
+    lib/store_context.ts                   # DEFAULT_STORE_CONTEXT fallback only — see note below
+    lib/db.ts                              # Supabase client + upsertCustomer/saveMessage/getRecentHistory/getStoreContext
 ```
-None of this has been reviewed for bugs by a fresh pass yet — read it before
-trusting it blindly.
+This has now had one review pass (2026-08-13, see git log) — not yet a full
+security/correctness audit.
 
-## Still needed from the user before the bot can be useful
-Real store info to replace the placeholder in `lib/store_context.ts`:
-- What the store sells
-- Opening hours / days closed
-- Delivery: areas covered, cost, timeframe
-- Payment methods accepted
-- Return / exchange policy
-- Physical address (if any)
-- Common FAQs and their answers
+## Real store info lives in the database, NOT in the repo
+`lib/store_context.ts` only exports a generic `DEFAULT_STORE_CONTEXT`
+fallback — safe to have public since this repo is a public GitHub repo.
+The store's real info (products, prices, hours, phone/WhatsApp, email,
+physical address, etc.) is a single row in the `store_config` table on the
+live Supabase project (ref `hurfcblefuwhuluimqjj`), inserted directly via
+SQL — it was never committed to git. `getStoreContext()` in `lib/db.ts`
+reads that row at request time and falls back to the generic default if
+the row is missing or the query fails.
+
+**To update the real store info:** run an `UPDATE public.store_config SET
+content = '...' WHERE id = 'default'` against the live project (Supabase
+Studio or the MCP `execute_sql` tool) — do not put real contact info back
+into `lib/store_context.ts`, it's a public file.
+
+Still incomplete in that row (marked TODO in the content itself): exact
+prices/brands/models in stock, delivery areas/cost, payment methods
+accepted, return/exchange/warranty policy, common FAQs.
 
 ## Remaining setup steps (in order)
 1. **Resolve the Page ID discrepancy** above — confirm which Page is the
