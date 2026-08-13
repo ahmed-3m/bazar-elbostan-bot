@@ -1,0 +1,12 @@
+# Claude Code local state — machine-specific, not part of the project
+.claude/
+
+# Environment files — real secrets go into `supabase secrets set`, never committed
+.env
+.env.local
+.env.*.local
+.env.keys
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
