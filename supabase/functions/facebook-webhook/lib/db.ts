@@ -42,6 +42,26 @@ export async function getRecentHistory(psid: string, limit = 30) {
   return (data ?? []).reverse();
 }
 
+export async function claimMid(mid: string): Promise<boolean> {
+  const supabase = getServiceClient();
+  const { error } = await supabase.from("processed_messages").insert({ mid });
+  if (error?.code === "23505") return false;
+  if (error && /duplicate key/i.test(error.message ?? "")) return false;
+  if (error) throw error;
+  return true;
+}
+
+export async function releaseMid(mid: string): Promise<void> {
+  const supabase = getServiceClient();
+  const { error } = await supabase.from("processed_messages").delete().eq(
+    "mid",
+    mid,
+  );
+  if (error) {
+    console.error(`releaseMid failed for mid=${mid}:`, error);
+  }
+}
+
 export async function getStoreContext(): Promise<string> {
   const supabase = getServiceClient();
   const { data, error } = await supabase
