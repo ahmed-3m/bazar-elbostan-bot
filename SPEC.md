@@ -18,9 +18,10 @@ separate Supabase project, **not** part of the Sihem personal-mentor codebase
   knowledge-base string injected into the system prompt — not rule-based
   canned replies. Falls back to "someone will follow up" if the LLM can't
   answer rather than inventing prices/stock/policy.
-- **LLM provider:** OpenRouter (`OPENROUTER_API_KEY`), default model
-  `google/gemini-2.0-flash-001`, overridable via `OPENROUTER_MODEL` env var
-  without a redeploy.
+- **LLM provider:** Zhipu/GLM Coding Plan API (`glm_api_key`, must be a
+  Coding Plan key since the code calls the `/api/coding/` path), default
+  model `glm-4.7-flash`, overridable via `GLM_MODEL` env var without a
+  redeploy. **Changed from OpenRouter on 2026-08-13** — see git log.
 
 ## Meta / Facebook app state
 - **App name:** "Bazar Elbostan", App ID `1797449671251704` (visible in the
@@ -67,7 +68,7 @@ supabase/
   functions/facebook-webhook/
     index.ts                               # GET verify (hub.challenge) + POST event loop
     lib/graph.ts                           # sendTextMessage() → Graph API v21.0 POST /me/messages
-    lib/llm.ts                             # generateReply(history, text, storeContext) → OpenRouter chat completion
+    lib/llm.ts                             # generateReply(history, text, storeContext) → GLM chat completion
     lib/store_context.ts                   # DEFAULT_STORE_CONTEXT fallback only — see note below
     lib/db.ts                              # Supabase client + upsertCustomer/saveMessage/getRecentHistory/getStoreContext
 ```
@@ -105,7 +106,7 @@ accepted, return/exchange/warranty policy, common FAQs.
    `0002_enable_rls.sql`.
 5. **Set secrets:** `PAGE_ACCESS_TOKEN` (from step 2), `VERIFY_TOKEN`
    (any random string, needs to match what's typed into Meta's Webhooks
-   Callback config), `OPENROUTER_API_KEY`. `SUPABASE_URL` /
+   Callback config), `glm_api_key` (Coding Plan key). `SUPABASE_URL` /
    `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by the Edge Functions
    runtime — no need to set those manually.
 6. **Deploy `facebook-webhook` with `--no-verify-jwt`** — Meta calls this

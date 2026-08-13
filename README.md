@@ -29,22 +29,24 @@ rest.
 - **Runtime:** Supabase Edge Functions (Deno) — a single `facebook-webhook`
   function handles Meta's webhook verification handshake and every
   incoming message event.
-- **Database:** Supabase Postgres — two tables, `customers` (one row per
-  Messenger user, keyed by their page-scoped ID) and `messages` (full
-  conversation log, used to give the LLM short-term memory).
-- **LLM:** [OpenRouter](https://openrouter.ai) (model configurable via env
-  var, defaults to `google/gemini-2.0-flash-001`).
+- **Database:** Supabase Postgres — `customers` (one row per Messenger
+  user, keyed by their page-scoped ID), `messages` (full conversation log,
+  used to give the LLM short-term memory), and `store_config` (single row
+  holding the store's real info, kept out of source so it never has to be
+  committed to this public repo).
+- **LLM:** [Zhipu/GLM](https://open.bigmodel.cn) Coding Plan API (model
+  configurable via env var, defaults to `glm-4.7-flash`).
 - **Messaging:** Meta Graph API (`/me/messages`) for sending replies.
 
-```
+```text
 supabase/
   functions/facebook-webhook/
     index.ts               # webhook verification (GET) + message events (POST)
     lib/graph.ts            # sendTextMessage() → Graph API
-    lib/llm.ts               # generateReply() → OpenRouter chat completion
-    lib/store_context.ts     # the store's knowledge base, injected into every LLM call
-    lib/db.ts                 # customer/message persistence
-  migrations/                 # Postgres schema
+    lib/llm.ts               # generateReply() → GLM chat completion
+    lib/store_context.ts     # generic public-safe fallback only — real content lives in store_config
+    lib/db.ts                 # customer/message persistence + getStoreContext()
+  migrations/                 # Postgres schema, incl. store_config (0003)
 ```
 
 ## Setup
@@ -55,13 +57,18 @@ supabase/
    Meta" use case, connect a Business Portfolio, and add your Facebook
    Page to it. Generate a **Page Access Token** from Messenger API
    Settings.
-3. **Fill in your store's real info** in
-   `supabase/functions/facebook-webhook/lib/store_context.ts` — products,
-   prices, hours, delivery, payment methods, return policy, address, FAQs.
-   This is what grounds every reply; the bot only knows what you put here.
+3. **Fill in your store's real info** by inserting/updating a row in the
+   `store_config` table (see `supabase/migrations/0003_store_config.sql`) —
+   products, prices, hours, delivery, payment methods, return policy,
+   address, FAQs, e.g. via Supabase Studio or
+   `UPDATE public.store_config SET content = '...' WHERE id = 'default'`.
+   This is what grounds every reply; the bot only knows what's in that row.
+   Never put real contact/business info in
+   `lib/store_context.ts` — it's a public source file and only holds a
+   generic fallback used when the row is missing.
 4. **Set secrets:**
    ```bash
-   supabase secrets set PAGE_ACCESS_TOKEN=... VERIFY_TOKEN=... OPENROUTER_API_KEY=...
+   supabase secrets set PAGE_ACCESS_TOKEN=... VERIFY_TOKEN=... glm_api_key=...
    ```
    (`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by the
    Edge Functions runtime.)
@@ -92,8 +99,8 @@ failure/retry behavior, security, cost, and Meta App Review readiness.
 |---|---|---|
 | `PAGE_ACCESS_TOKEN` | yes | From Meta → Messenger API Settings |
 | `VERIFY_TOKEN` | yes | Any random string; must match the Verify Token typed into Meta's webhook config |
-| `OPENROUTER_API_KEY` | yes | For reply generation |
-| `OPENROUTER_MODEL` | no | Defaults to `google/gemini-2.0-flash-001` |
+| `glm_api_key` | yes | Zhipu/GLM Coding Plan key (`sk-sp-...`) for reply generation |
+| `GLM_MODEL` | no | Defaults to `glm-4.7-flash` |
 
 ## Scope
 
