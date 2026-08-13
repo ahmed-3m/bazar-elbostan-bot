@@ -1,11 +1,25 @@
 import { sendTextMessage } from "./lib/graph.ts";
 import { generateReply } from "./lib/llm.ts";
 import {
+  claimMid,
   getRecentHistory,
   getStoreContext,
+  releaseMid,
   saveMessage,
   upsertCustomer,
 } from "./lib/db.ts";
+import { handleEvent, type MessagingEvent } from "./lib/handle_event.ts";
+
+const deps = {
+  claimMid,
+  releaseMid,
+  upsertCustomer,
+  saveMessage,
+  getRecentHistory,
+  getStoreContext,
+  generateReply,
+  sendTextMessage,
+};
 
 // Meta's webhook verification handshake — GET /facebook-webhook with
 // hub.mode=subscribe. Echo hub.challenge back only if hub.verify_token
@@ -21,11 +35,6 @@ function handleVerification(url: URL): Response {
   return new Response("Forbidden", { status: 403 });
 }
 
-interface MessagingEvent {
-  sender: { id: string };
-  message?: { text?: string; is_echo?: boolean };
-}
-
 interface WebhookEntry {
   messaging?: MessagingEvent[];
 }
@@ -35,25 +44,17 @@ interface WebhookBody {
   entry?: WebhookEntry[];
 }
 
-async function handleEvent(event: MessagingEvent) {
-  const psid = event.sender.id;
-  const text = event.message?.text;
-
-  // Echoes are messages the Page itself sent (e.g. sent from Business Suite
-  // by a human) bounced back through the webhook — never reply to those.
-  if (!text || event.message?.is_echo) return;
-
-  await upsertCustomer(psid);
-  await saveMessage(psid, "in", text);
-
-  const [history, storeContext] = await Promise.all([
-    getRecentHistory(psid),
-    getStoreContext(),
-  ]);
-  const reply = await generateReply(history, text, storeContext);
-
-  await sendTextMessage(psid, reply);
-  await saveMessage(psid, "out", reply);
+function keepAlive(task: Promise<unknown>) {
+  const runtime = globalThis as typeof globalThis & {
+    EdgeRuntime?: { waitUntil: (promise: Promise<unknown>) => void };
+  };
+  // Without waitUntil the isolate can die after the 200, aborting the GLM
+  // fetch mid-flight and sending FALLBACK_REPLY.
+  if (runtime.EdgeRuntime?.waitUntil) {
+    runtime.EdgeRuntime.waitUntil(task);
+    return;
+  }
+  task.catch((err) => console.error("handleEvent failed:", err));
 }
 
 Deno.serve(async (req) => {
@@ -77,8 +78,10 @@ Deno.serve(async (req) => {
   // slow/failed responses, which would otherwise send duplicate replies.
   const events = (body.entry ?? []).flatMap((e) => e.messaging ?? []);
   for (const event of events) {
-    handleEvent(event).catch((err) =>
-      console.error("handleEvent failed:", err)
+    keepAlive(
+      handleEvent(event, deps).catch((err) =>
+        console.error("handleEvent failed:", err)
+      ),
     );
   }
 
