@@ -29,9 +29,11 @@ rest.
 - **Runtime:** Supabase Edge Functions (Deno) — a single `facebook-webhook`
   function handles Meta's webhook verification handshake and every
   incoming message event.
-- **Database:** Supabase Postgres — two tables, `customers` (one row per
-  Messenger user, keyed by their page-scoped ID) and `messages` (full
-  conversation log, used to give the LLM short-term memory).
+- **Database:** Supabase Postgres — `customers` (one row per Messenger
+  user, keyed by their page-scoped ID), `messages` (full conversation log,
+  used to give the LLM short-term memory), and `store_config` (single row
+  holding the store's real info, kept out of source so it never has to be
+  committed to this public repo).
 - **LLM:** [Zhipu/GLM](https://open.bigmodel.cn) Coding Plan API (model
   configurable via env var, defaults to `glm-4.7-flash`).
 - **Messaging:** Meta Graph API (`/me/messages`) for sending replies.
@@ -42,9 +44,9 @@ supabase/
     index.ts               # webhook verification (GET) + message events (POST)
     lib/graph.ts            # sendTextMessage() → Graph API
     lib/llm.ts               # generateReply() → GLM chat completion
-    lib/store_context.ts     # the store's knowledge base, injected into every LLM call
-    lib/db.ts                 # customer/message persistence
-  migrations/                 # Postgres schema
+    lib/store_context.ts     # generic public-safe fallback only — real content lives in store_config
+    lib/db.ts                 # customer/message persistence + getStoreContext()
+  migrations/                 # Postgres schema, incl. store_config (0003)
 ```
 
 ## Setup
@@ -55,10 +57,15 @@ supabase/
    Meta" use case, connect a Business Portfolio, and add your Facebook
    Page to it. Generate a **Page Access Token** from Messenger API
    Settings.
-3. **Fill in your store's real info** in
-   `supabase/functions/facebook-webhook/lib/store_context.ts` — products,
-   prices, hours, delivery, payment methods, return policy, address, FAQs.
-   This is what grounds every reply; the bot only knows what you put here.
+3. **Fill in your store's real info** by inserting/updating a row in the
+   `store_config` table (see `supabase/migrations/0003_store_config.sql`) —
+   products, prices, hours, delivery, payment methods, return policy,
+   address, FAQs, e.g. via Supabase Studio or
+   `UPDATE public.store_config SET content = '...' WHERE id = 'default'`.
+   This is what grounds every reply; the bot only knows what's in that row.
+   Never put real contact/business info in
+   `lib/store_context.ts` — it's a public source file and only holds a
+   generic fallback used when the row is missing.
 4. **Set secrets:**
    ```bash
    supabase secrets set PAGE_ACCESS_TOKEN=... VERIFY_TOKEN=... glm_api_key=...
