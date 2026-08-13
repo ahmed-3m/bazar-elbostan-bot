@@ -38,7 +38,7 @@ rest.
   configurable via env var, defaults to `glm-4.7-flash`).
 - **Messaging:** Meta Graph API (`/me/messages`) for sending replies.
 
-```
+```text
 supabase/
   functions/facebook-webhook/
     index.ts               # webhook verification (GET) + message events (POST)
