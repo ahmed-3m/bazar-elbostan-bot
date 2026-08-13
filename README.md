@@ -32,8 +32,8 @@ rest.
 - **Database:** Supabase Postgres — two tables, `customers` (one row per
   Messenger user, keyed by their page-scoped ID) and `messages` (full
   conversation log, used to give the LLM short-term memory).
-- **LLM:** [OpenRouter](https://openrouter.ai) (model configurable via env
-  var, defaults to `google/gemini-2.0-flash-001`).
+- **LLM:** [Zhipu/GLM](https://open.bigmodel.cn) Coding Plan API (model
+  configurable via env var, defaults to `glm-4.7-flash`).
 - **Messaging:** Meta Graph API (`/me/messages`) for sending replies.
 
 ```
@@ -41,7 +41,7 @@ supabase/
   functions/facebook-webhook/
     index.ts               # webhook verification (GET) + message events (POST)
     lib/graph.ts            # sendTextMessage() → Graph API
-    lib/llm.ts               # generateReply() → OpenRouter chat completion
+    lib/llm.ts               # generateReply() → GLM chat completion
     lib/store_context.ts     # the store's knowledge base, injected into every LLM call
     lib/db.ts                 # customer/message persistence
   migrations/                 # Postgres schema
@@ -61,7 +61,7 @@ supabase/
    This is what grounds every reply; the bot only knows what you put here.
 4. **Set secrets:**
    ```bash
-   supabase secrets set PAGE_ACCESS_TOKEN=... VERIFY_TOKEN=... OPENROUTER_API_KEY=...
+   supabase secrets set PAGE_ACCESS_TOKEN=... VERIFY_TOKEN=... glm_api_key=...
    ```
    (`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are auto-injected by the
    Edge Functions runtime.)
@@ -92,8 +92,8 @@ failure/retry behavior, security, cost, and Meta App Review readiness.
 |---|---|---|
 | `PAGE_ACCESS_TOKEN` | yes | From Meta → Messenger API Settings |
 | `VERIFY_TOKEN` | yes | Any random string; must match the Verify Token typed into Meta's webhook config |
-| `OPENROUTER_API_KEY` | yes | For reply generation |
-| `OPENROUTER_MODEL` | no | Defaults to `google/gemini-2.0-flash-001` |
+| `glm_api_key` | yes | Zhipu/GLM Coding Plan key (`sk-sp-...`) for reply generation |
+| `GLM_MODEL` | no | Defaults to `glm-4.7-flash` |
 
 ## Scope
 

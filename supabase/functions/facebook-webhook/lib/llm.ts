@@ -3,19 +3,19 @@ interface HistoryItem {
   content: string;
 }
 
-const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
+const DEFAULT_MODEL = "glm-4.7-flash";
 
 export async function generateReply(
   history: HistoryItem[],
   incomingMessage: string,
   storeContext: string,
 ): Promise<string> {
-  const apiKey = Deno.env.get("OPENROUTER_API_KEY");
+  const apiKey = Deno.env.get("glm_api_key");
   if (!apiKey) {
-    console.error("OPENROUTER_API_KEY not set");
+    console.error("glm_api_key not set");
     return "Sorry, I'm having trouble right now — someone from the team will follow up shortly.";
   }
-  const model = Deno.env.get("OPENROUTER_MODEL") ?? DEFAULT_MODEL;
+  const model = Deno.env.get("GLM_MODEL") ?? DEFAULT_MODEL;
 
   const messages = [
     {
@@ -38,17 +38,22 @@ export async function generateReply(
     { role: "user" as const, content: incomingMessage },
   ];
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+  const res = await fetch(
+    // Coding-Plan key (sk-sp-...) — bills against the subscription quota, but
+    // ONLY works on the /api/coding/ path, not the standard PAYG path.
+    "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ model, messages }),
     },
-    body: JSON.stringify({ model, messages }),
-  });
+  );
 
   if (!res.ok) {
-    console.error("OpenRouter call failed:", res.status, await res.text());
+    console.error("GLM call failed:", res.status, await res.text());
     return "Sorry, I'm having trouble right now — someone from the team will follow up shortly.";
   }
 
